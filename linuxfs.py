@@ -85,6 +85,23 @@ class FS :
                 ("fsx_cowextsize", ct.c_uint32),
                 ("fsx_pad", 8 * ct.c_ubyte),
             ]
+
+        def __repr__(self) :
+            return \
+                (
+                    "(%s)"
+                %
+                    ", ".join
+                      (
+                            "%%s = %s" % ("%d", "%#0.8x")[f == "fsx_xflags"]
+                        %
+                            (f, getattr(self, f))
+                        for f in
+                            ("fsx_xflags", "fsx_extsize", "fsx_nextents", "fsx_projid", "fsx_cowextsize")
+                      )
+                )
+        #end __repr__
+
     #end xattr
 
     XFLAG_REALTIME = 0x00000001
@@ -185,5 +202,12 @@ def getflags(fd) :
     return \
         flags.value
 #end getflags
+
+def getxattr(fd) :
+    xattr = FS.xattr()
+    _check_sts(libc.ioctl(_get_fileno(fd), FS.IOC_FSGETXATTR, ct.byref(xattr)))
+    return \
+        xattr
+#end getxattr
 
 # more TBD
