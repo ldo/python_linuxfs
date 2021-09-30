@@ -160,4 +160,30 @@ class FS :
 libc.ioctl.argtypes = (ct.c_int, ct.c_ulong, ct.c_void_p)
 libc.ioctl.restype = ct.c_int
 
-TBD
+def _get_fileno(fd) :
+    if not isinstance(fd, int) :
+        if hasattr(fd, "fileno") :
+            fd = fd.fileno()
+        else :
+            raise TypeError("fd arg must be int fileno or object with fileno() method")
+        #end if
+    #end if
+    return \
+        fd
+#end _get_fileno
+
+def _check_sts(sts) :
+    if sts < 0 :
+        errno = ct.get_errno()
+        raise OSError(errno, os.strerror(errno))
+    #end if
+#end _check_sts
+
+def getflags(fd) :
+    flags = ct.c_long()
+    _check_sts(libc.ioctl(_get_fileno(fd), FS.IOC_GETFLAGS, ct.byref(flags)))
+    return \
+        flags.value
+#end getflags
+
+# more TBD
