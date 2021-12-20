@@ -1,7 +1,6 @@
 #+
-# This module implements a pure-Python wrapper around the
-# Linux-specific filesystem attribute functions.
-#
+# This module implements a pure-Python wrapper around various
+# Linux-specific filesystem functions.
 #-
 
 import os
@@ -9,7 +8,78 @@ import enum
 import ctypes as ct
 import atexit
 
+#+
+# Useful stuff
+#-
+
+def make_funcptr(lib, name) :
+    "returns a new, unique ctypes object representing the same" \
+    " entry point in lib named name. This can have its own argtypes" \
+    " and restype definitions, distinct from any other object representing" \
+    " the same entry point."
+    ep = getattr(lib, name)
+    return \
+        type(ep).from_address(ct.addressof(ep))
+#end make_funcptr
+
+#+
+# Low-level definitions
+#-
+
 libc = ct.CDLL("libc.so.6", use_errno = True)
+
+class SYS :
+    "syscall codes."
+    openat2 = 437
+#end SYS
+
+def def_syscall(name, code, args, res) :
+    # actual numeric syscall codes (__NR_xxx) can be found in /usr/include/asm-generic/unistd.h.
+    # /usr/include/bits/syscall.h just defines SYS_xxx synonyms for these.
+    func = make_funcptr(libc, "syscall")
+    func.argtypes = (ct.c_int,) + args
+    func.restype = res
+
+    def callit(*args) :
+        return \
+            func(code, *args)
+    #end callit
+
+#begin def_syscall
+    callit.__name__ = name
+    return \
+        callit
+#end def_syscall
+
+class OPENAT2 :
+    "definitions from /usr/include/linux/openat2.h."
+
+    class open_how(ct.Structure) :
+        _fields_ = \
+            [
+                ("flags", ct.c_uint64),
+                ("mode", ct.c_uint64),
+                ("resolve", ct.c_uint64),
+            ]
+    #end open_how
+
+    # mask bits for open_how.resolve
+    RESOLVE_NO_XDEV = 0x01 # no crossing mount points
+    RESOLVE_NO_MAGICLINKS = 0x02 # no following “magic symlinks”
+    RESOLVE_NO_SYMLINKS = 0x04 # no following any symlinks, magic or otherwise
+    RESOLVE_BENEATH = 0x08 # no going above hierarchy of dirfd
+    RESOLVE_IN_ROOT = 0x10 # interpret “/” and “..” as staying within dirfd, as though chroot were in effect
+    RESOLVE_CACHED = 0x20 # only do cached lookups, may return -EAGAIN
+
+#end OPENAT2
+
+openat2 = def_syscall \
+  (
+    "openat2",
+    SYS.openat2,
+    (ct.c_int, ct.c_char_p, ct.POINTER(OPENAT2.open_how), ct.c_size_t),
+    ct.c_long
+  )
 
 class _IOC :
     # from </usr/include/asm-generic/ioctl.h>
@@ -138,6 +208,7 @@ class FS :
     IOC_GETFSLABEL = _IOC.IOR(0x94, 49, FSLABEL_MAX)
     IOC_SETFSLABEL = _IOC.IOW(0x94, 50, FSLABEL_MAX)
 
+    # see ioctl_iflags(2) man page for info about these
     SECRM_FL = 0x00000001
     UNRM_FL = 0x00000002
     COMPR_FL = 0x00000004
@@ -176,6 +247,10 @@ class FS :
 
 libc.ioctl.argtypes = (ct.c_int, ct.c_ulong, ct.c_void_p)
 libc.ioctl.restype = ct.c_int
+
+#+
+# Higher-level stuff
+#-
 
 def _get_fileno(fd) :
     if not isinstance(fd, int) :
