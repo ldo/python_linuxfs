@@ -28,16 +28,24 @@ def make_funcptr(lib, name) :
 
 libc = ct.CDLL("libc.so.6", use_errno = True)
 
+# following comes from /usr/include/bits/fcntl-linux.h or /usr/include/linux/fcntl.h
+AT_FDCWD = -100 # special fd value indicating current working directory
+AT_EMPTY_PATH = 0x1000 # needs CAP_DAC_READ_SEARCH privilege to use
+AT_SYMLINK_FOLLOW = 0x400 # no special privileges necessary
+
 class SYS :
     "syscall codes."
+    linkat = 37
     openat2 = 437
 #end SYS
 
 def def_syscall(name, code, args, res) :
+    "creates an instance of libc.syscall() which invokes syscall(2) with the given" \
+    " additional argument and result types."
     # actual numeric syscall codes (__NR_xxx) can be found in /usr/include/asm-generic/unistd.h.
     # /usr/include/bits/syscall.h just defines SYS_xxx synonyms for these.
     func = make_funcptr(libc, "syscall")
-    func.argtypes = (ct.c_int,) + args
+    func.argtypes = (ct.c_long,) + args
     func.restype = res
 
     def callit(*args) :
@@ -73,6 +81,19 @@ class OPENAT2 :
 
 #end OPENAT2
 
+libc.linkat.argtypes = (ct.c_int, ct.c_char_p, ct.c_int, ct.c_char_p, ct.c_int)
+libc.linkat.restype = ct.c_int
+
+if False :
+    # doesn’t seem to work, luckily I don’t need it
+    linkat = def_syscall \
+      (
+        "linkat",
+        SYS.linkat,
+        (ct.c_int, ct.c_char_p, ct.c_int, ct.c_char_p, ct.c_int),
+        ct.c_int
+      )
+#end if
 openat2 = def_syscall \
   (
     "openat2",
@@ -284,5 +305,57 @@ def getxattr(fd) :
     return \
         xattr
 #end getxattr
+
+def open_at(dirfd, pathname, **kwargs) :
+    "convenient wrapper around openat2(2) which breaks out fields of open_how" \
+    " struct into separate keyword args. Returns open file descriptor on success."
+    if not isinstance(dirfd, int) :
+        if not hasattr(dirfd, "fileno") :
+            raise TypeError("dirfd must be an integer file descriptor or object with fileno() method")
+        #end if
+        dirfd = dirfd.fileno()
+    #end if
+    if isinstance(pathname, str) :
+        c_pathname = pathname.encode()
+    elif not isinstance(pathname, (bytes, bytearray)) :
+        raise TypeError("pathname must be string or bytes")
+    else :
+        c_pathname = pathname
+    #end if
+    how = OPENAT2.open_how()
+    valid = set(f[0] for f in OPENAT2.open_how._fields_)
+    for field in kwargs :
+        if field not in valid :
+            raise TypeError("invalid keyword %s" % field)
+        #end if
+        setattr(how, field, kwargs[field])
+    #end for
+    res = openat2(dirfd, c_pathname, ct.byref(how), ct.sizeof(how))
+    _check_sts(res)
+    return \
+        res
+#end open_at
+
+def save_tmpfile(fd, path) :
+    "assumes fd was previously created as an anonymous file with O_TMPFILE flag;" \
+    " gives it the explicit name path, which must be on the same filesystem" \
+    " where it was originally created. This is done following the procedure given" \
+    " on the openat(2) man page."
+    if not isinstance(fd, int) :
+        if not hasattr(fd, "fileno") :
+            raise TypeError("fd must be an integer file descriptor or object with fileno() method")
+        #end if
+        fd = fd.fileno()
+    #end if
+    if isinstance(path, str) :
+        c_path = path.encode()
+    elif not isinstance(path, (bytes, bytearray)) :
+        raise TypeError("path must be string or bytes")
+    else :
+        c_path = path
+    #end if
+    tmpfile_path = "/proc/self/fd/%d" % fd # “magic symlink” to name of file with no name
+    _check_sts(libc.linkat(AT_FDCWD, tmpfile_path.encode(), AT_FDCWD, c_path, AT_SYMLINK_FOLLOW))
+#end save_tmpfile
 
 # more TBD
