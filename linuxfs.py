@@ -299,6 +299,11 @@ def getflags(fd) :
         flags.value
 #end getflags
 
+def setflags(fd, flags) :
+    c_flags = ct.c_long(flags)
+    _check_sts(libc.ioctl(_get_fileno(fd), FS.IOC_SETFLAGS, ct.byref(c_flags)))
+#end setflags
+
 def getxattr(fd) :
     xattr = FS.xattr()
     _check_sts(libc.ioctl(_get_fileno(fd), FS.IOC_FSGETXATTR, ct.byref(xattr)))
