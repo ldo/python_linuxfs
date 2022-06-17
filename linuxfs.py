@@ -166,6 +166,8 @@ class FS :
     "definitions of codes and flag bits that you will need."
 
     # from </usr/include/linux/fs.h>
+    # Note this is not the same thing as “extended attributes” (xattr(7)),
+    # for which standard Python library calls already exist.
     class xattr(ct.Structure) :
         _fields_ = \
             [
