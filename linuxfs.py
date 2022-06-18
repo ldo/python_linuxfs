@@ -84,16 +84,6 @@ class OPENAT2 :
 libc.linkat.argtypes = (ct.c_int, ct.c_char_p, ct.c_int, ct.c_char_p, ct.c_int)
 libc.linkat.restype = ct.c_int
 
-if False :
-    # doesn’t seem to work, luckily I don’t need it
-    linkat = def_syscall \
-      (
-        "linkat",
-        SYS.linkat,
-        (ct.c_int, ct.c_char_p, ct.c_int, ct.c_char_p, ct.c_int),
-        ct.c_int
-      )
-#end if
 openat2 = def_syscall \
   (
     "openat2",
@@ -364,5 +354,3 @@ def save_tmpfile(fd, path) :
     tmpfile_path = "/proc/self/fd/%d" % fd # “magic symlink” to name of file with no name
     _check_sts(libc.linkat(AT_FDCWD, tmpfile_path.encode(), AT_FDCWD, c_path, AT_SYMLINK_FOLLOW))
 #end save_tmpfile
-
-# more TBD
