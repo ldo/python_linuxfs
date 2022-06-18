@@ -81,6 +81,8 @@ class OPENAT2 :
 
 #end OPENAT2
 
+libc.ioctl.argtypes = (ct.c_int, ct.c_ulong, ct.c_void_p)
+libc.ioctl.restype = ct.c_int
 libc.linkat.argtypes = (ct.c_int, ct.c_char_p, ct.c_int, ct.c_char_p, ct.c_int)
 libc.linkat.restype = ct.c_int
 
@@ -257,9 +259,6 @@ class FS :
     FL_USER_MODIFIABLE = 0x000380FF
 
 #end FS
-
-libc.ioctl.argtypes = (ct.c_int, ct.c_ulong, ct.c_void_p)
-libc.ioctl.restype = ct.c_int
 
 #+
 # Higher-level stuff
