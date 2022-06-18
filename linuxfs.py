@@ -171,6 +171,16 @@ class FS :
                 ("fsx_pad", 8 * ct.c_ubyte),
             ]
 
+        def copy(self) :
+            celf = type(self)
+            res = celf()
+            for f in celf._fields_ :
+                setattr(res, f[0], getattr(self, f[0]))
+            #end for
+            return \
+                res
+        #end copy
+
         def __repr__(self) :
             return \
                 (
