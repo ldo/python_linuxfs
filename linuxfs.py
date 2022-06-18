@@ -305,12 +305,59 @@ def setflags(fd, flags) :
     _check_sts(libc.ioctl(_get_fileno(fd), FS.IOC_SETFLAGS, ct.byref(c_flags)))
 #end setflags
 
-def getxattr(fd) :
+def getfsxattr(fd) :
+    "returns the fsx_ attribute flags as found in </usr/include/linux/fs.h>."
     xattr = FS.xattr()
     _check_sts(libc.ioctl(_get_fileno(fd), FS.IOC_FSGETXATTR, ct.byref(xattr)))
     return \
         xattr
-#end getxattr
+#end getfsxattr
+
+def setfsxattr(fd, *args, **kwargs) :
+    "sets new values for the fsx_ attribute flags as found in" \
+    " </usr/include/linux/fs.h>. Call this as follows:\n" \
+    "\n" \
+    "    setfsxattr(fd[, «newattrs»], [«field» = «value», ...])\n" \
+    "\n" \
+    "where «newattrs» is a FS.xattr struct, and the individual «fields» of" \
+    " the FS.xattr struct can also be specified by name. Any fields not" \
+    " specified by name keep their value from «newattrs», or are set to" \
+    " zero if «newattrs» is not specified. This allows you to selectively" \
+    " change certain fields with a call like\n" \
+    "\n" \
+    "    setfsxattr(fd, getfsxattr(fd), «field» = «value», ...)"
+    if len(args) + len(kwargs) == 0 :
+        raise TypeError("nothing to do")
+    #end if
+    if len(args) > 1 :
+        raise TypeError("only expecting one positional argument")
+    #end if
+    if len(args) > 0 :
+        xattr = args[0]
+        if not isinstance(xattr, FS.xattr) :
+            raise TypeError("positional argument is not a FS.xattr struct")
+        #end if
+    else :
+        xattr = FS.xattr()
+    #end if
+    if (len(args) != 0) == (len(kwargs) != 0) :
+        raise TypeError \
+          (
+            "either pass a positional FS.xattr argument, or"
+            " individual field values by keyword"
+          )
+    #end if
+    if len(kwargs) > 0 :
+        valid = set(f[0] for f in FS.xattr._fields_ if f[0] != "fsx_pad")
+        for field in kwargs :
+            if field not in valid :
+                raise TypeError("invalid FS.xattr keyword %s" % field)
+            #end if
+            setattr(xattr, field, kwargs[field])
+        #end for
+    #end if
+    _check_sts(libc.ioctl(_get_fileno(fd), FS.IOC_FSSETXATTR, ct.byref(xattr)))
+#end setfsxattr
 
 def open_at(dirfd, pathname, **kwargs) :
     "convenient wrapper around openat2(2) which breaks out fields of open_how" \
