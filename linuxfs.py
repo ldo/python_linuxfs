@@ -264,12 +264,12 @@ class FS :
 # Higher-level stuff
 #-
 
-def _get_fileno(fd) :
+def _get_fileno(fd, argname = "fd") :
     if not isinstance(fd, int) :
         if hasattr(fd, "fileno") :
             fd = fd.fileno()
         else :
-            raise TypeError("fd arg must be int fileno or object with fileno() method")
+            raise TypeError("%s arg must be int fileno or object with fileno() method" % argname)
         #end if
     #end if
     return \
@@ -305,12 +305,6 @@ def getxattr(fd) :
 def open_at(dirfd, pathname, **kwargs) :
     "convenient wrapper around openat2(2) which breaks out fields of open_how" \
     " struct into separate keyword args. Returns open file descriptor on success."
-    if not isinstance(dirfd, int) :
-        if not hasattr(dirfd, "fileno") :
-            raise TypeError("dirfd must be an integer file descriptor or object with fileno() method")
-        #end if
-        dirfd = dirfd.fileno()
-    #end if
     if isinstance(pathname, str) :
         c_pathname = pathname.encode()
     elif not isinstance(pathname, (bytes, bytearray)) :
@@ -322,11 +316,11 @@ def open_at(dirfd, pathname, **kwargs) :
     valid = set(f[0] for f in OPENAT2.open_how._fields_)
     for field in kwargs :
         if field not in valid :
-            raise TypeError("invalid keyword %s" % field)
+            raise TypeError("invalid OPENAT2 keyword %s" % field)
         #end if
         setattr(how, field, kwargs[field])
     #end for
-    res = openat2(dirfd, c_pathname, ct.byref(how), ct.sizeof(how))
+    res = openat2(_get_fileno(dirfd, "dirfd"), c_pathname, ct.byref(how), ct.sizeof(how))
     _check_sts(res)
     return \
         res
