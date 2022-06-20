@@ -275,6 +275,9 @@ class FS :
 #-
 
 def _get_fileno(fd, argname = "fd") :
+    # common code to allow caller to pass either an integer file
+    # descriptor or an object with the usual Python fileno() method
+    # that returns such a file descriptor.
     if not isinstance(fd, int) :
         if hasattr(fd, "fileno") :
             fd = fd.fileno()
@@ -361,7 +364,8 @@ def setfsxattr(fd, *args, **kwargs) :
 
 def open_at(dirfd, pathname, **kwargs) :
     "convenient wrapper around openat2(2) which breaks out fields of open_how" \
-    " struct into separate keyword args. Returns open file descriptor on success."
+    " struct into separate keyword args (flags, mode, resolve). Returns open" \
+    " file descriptor on success."
     if isinstance(pathname, str) :
         c_pathname = pathname.encode()
     elif not isinstance(pathname, (bytes, bytearray)) :
