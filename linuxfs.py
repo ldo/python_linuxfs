@@ -1,6 +1,8 @@
+"""This module implements a pure-Python wrapper around various
+Linux-specific filesystem functions."""
 #+
-# This module implements a pure-Python wrapper around various
-# Linux-specific filesystem functions.
+# Copyright 2022 Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+# Licensed under the GNU Lesser General Public License v2.1 or later.
 #-
 
 import os
@@ -35,15 +37,16 @@ AT_SYMLINK_FOLLOW = 0x400 # no special privileges necessary
 
 class SYS :
     "syscall codes."
+    # actual numeric syscall codes (__NR_xxx) can be found in /usr/include/asm-generic/unistd.h.
+    # /usr/include/bits/syscall.h just defines SYS_xxx synonyms for these.
     linkat = 37
     openat2 = 437
 #end SYS
 
 def def_syscall(name, code, args, res) :
-    "creates an instance of libc.syscall() which invokes syscall(2) with the given" \
-    " additional argument and result types."
-    # actual numeric syscall codes (__NR_xxx) can be found in /usr/include/asm-generic/unistd.h.
-    # /usr/include/bits/syscall.h just defines SYS_xxx synonyms for these.
+    "creates a function which invokes syscall(2) with the given code and taking" \
+    " additional arguments with the given types, returning a result of the given" \
+    " type."
     func = make_funcptr(libc, "syscall")
     func.argtypes = (ct.c_long,) + args
     func.restype = res
