@@ -1,0 +1,6 @@
+This module provides a pure-Python wrapper around some Linux-specific
+filesystem calls that have not (yet) found their way into the standard
+Python library.
+
+Lawrence D'Oliveiro <ldo@geek-central.gen.nz>
+2022 June 20
