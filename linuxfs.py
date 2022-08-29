@@ -93,7 +93,7 @@ libc.renameat2.restype = ct.c_int
 
 # from </usr/include/linux/fs.h>:
 RENAME_NOREPLACE = 1 << 0 # fail if newpath already exists
-RENAME_EXCHANGE = 1 << 1 # exchange inodes
+RENAME_EXCHANGE = 1 << 1 # exchange names
 RENAME_WHITEOUT = 1 << 2 # create whiteout object
   # (overlay/unionfs-type systems only) (requires CAP_MKNOD)
 
