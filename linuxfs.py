@@ -292,6 +292,19 @@ def _get_fileno(fd, argname = "fd") :
         fd
 #end _get_fileno
 
+def _get_path(pathname, argname) :
+    # returns a utf-8-encoded representation of pathname.
+    if isinstance(pathname, str) :
+        c_pathname = pathname.encode()
+    elif not isinstance(pathname, (bytes, bytearray)) :
+        raise TypeError("%s must be string or bytes" % argname)
+    else :
+        c_pathname = pathname
+    #end if
+    return \
+        c_pathname
+#end _get_path
+
 def _check_sts(sts) :
     if sts < 0 :
         errno = ct.get_errno()
@@ -369,13 +382,6 @@ def open_at(dirfd, pathname, **kwargs) :
     "convenient wrapper around openat2(2) which breaks out fields of open_how" \
     " struct into separate keyword args (flags, mode, resolve). Returns open" \
     " file descriptor on success."
-    if isinstance(pathname, str) :
-        c_pathname = pathname.encode()
-    elif not isinstance(pathname, (bytes, bytearray)) :
-        raise TypeError("pathname must be string or bytes")
-    else :
-        c_pathname = pathname
-    #end if
     how = OPENAT2.open_how()
     valid = set(f[0] for f in OPENAT2.open_how._fields_)
     for field in kwargs :
@@ -384,7 +390,13 @@ def open_at(dirfd, pathname, **kwargs) :
         #end if
         setattr(how, field, kwargs[field])
     #end for
-    res = openat2(_get_fileno(dirfd, "dirfd"), c_pathname, ct.byref(how), ct.sizeof(how))
+    res = openat2 \
+      (
+        _get_fileno(dirfd, "dirfd"),
+        _get_path(pathname, "pathname"),
+        ct.byref(how),
+        ct.sizeof(how)
+      )
     _check_sts(res)
     return \
         res
@@ -395,19 +407,7 @@ def save_tmpfile(fd, path) :
     " gives it the explicit name path, which must be on the same filesystem" \
     " where it was originally created. This is done following the procedure given" \
     " on the openat(2) man page."
-    if not isinstance(fd, int) :
-        if not hasattr(fd, "fileno") :
-            raise TypeError("fd must be an integer file descriptor or object with fileno() method")
-        #end if
-        fd = fd.fileno()
-    #end if
-    if isinstance(path, str) :
-        c_path = path.encode()
-    elif not isinstance(path, (bytes, bytearray)) :
-        raise TypeError("path must be string or bytes")
-    else :
-        c_path = path
-    #end if
-    tmpfile_path = "/proc/self/fd/%d" % fd # “magic symlink” to name of file with no name
+    c_path = _get_path(path)
+    tmpfile_path = "/proc/self/fd/%d" % _get_file(fd) # “magic symlink” to name of file with no name
     _check_sts(libc.linkat(AT_FDCWD, tmpfile_path.encode(), AT_FDCWD, c_path, AT_SYMLINK_FOLLOW))
 #end save_tmpfile
