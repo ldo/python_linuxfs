@@ -88,6 +88,14 @@ libc.ioctl.argtypes = (ct.c_int, ct.c_ulong, ct.c_void_p)
 libc.ioctl.restype = ct.c_int
 libc.linkat.argtypes = (ct.c_int, ct.c_char_p, ct.c_int, ct.c_char_p, ct.c_int)
 libc.linkat.restype = ct.c_int
+libc.renameat2.argtypes = (ct.c_int, ct.c_char_p, ct.c_int, ct.c_char_p, ct.c_uint)
+libc.renameat2.restype = ct.c_int
+
+# from </usr/include/linux/fs.h>:
+RENAME_NOREPLACE = 1 << 0 # fail if newpath already exists
+RENAME_EXCHANGE = 1 << 1 # exchange inodes
+RENAME_WHITEOUT = 1 << 2 # create whiteout object
+  # (overlay/unionfs-type systems only) (requires CAP_MKNOD)
 
 openat2 = def_syscall \
   (
@@ -411,3 +419,16 @@ def save_tmpfile(fd, path) :
     tmpfile_path = "/proc/self/fd/%d" % _get_file(fd) # “magic symlink” to name of file with no name
     _check_sts(libc.linkat(AT_FDCWD, tmpfile_path.encode(), AT_FDCWD, c_path, AT_SYMLINK_FOLLOW))
 #end save_tmpfile
+
+def rename_at(olddirfd, oldpath, newdirfd, newpath, flags) :
+    "does a renameat2(2) call."
+    res = libc.renameat2 \
+      (
+        _get_fileno(olddirfd),
+        _get_path(oldpath, "oldpath"),
+        _get_fileno(newdirfd),
+        _get_path(newpath, "newpath"),
+        flags
+      )
+    _check_sts(res)
+#end rename_at
