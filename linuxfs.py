@@ -430,9 +430,9 @@ def rename_at(olddirfd, oldpath, newdirfd, newpath, flags) :
     "does a renameat2(2) call."
     res = libc.renameat2 \
       (
-        _get_fileno(olddirfd),
+        _get_fileno(olddirfd, "olddirfd"),
         _get_path(oldpath, "oldpath"),
-        _get_fileno(newdirfd),
+        _get_fileno(newdirfd, "newdirfd"),
         _get_path(newpath, "newpath"),
         flags
       )
