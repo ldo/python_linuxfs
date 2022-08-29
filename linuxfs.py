@@ -426,7 +426,7 @@ def save_tmpfile(fd, path) :
     _check_sts(libc.linkat(AT_FDCWD, tmpfile_path.encode(), AT_FDCWD, c_path, AT_SYMLINK_FOLLOW))
 #end save_tmpfile
 
-def rename_at(olddirfd, oldpath, newdirfd, newpath, flags) :
+def rename_at(olddirfd, oldpath, newdirfd, newpath, flags = 0) :
     "does a renameat2(2) call."
     res = libc.renameat2 \
       (
