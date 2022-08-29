@@ -415,8 +415,8 @@ def save_tmpfile(fd, path) :
     " gives it the explicit name path, which must be on the same filesystem" \
     " where it was originally created. This is done following the procedure given" \
     " on the openat(2) man page."
-    c_path = _get_path(path)
-    tmpfile_path = "/proc/self/fd/%d" % _get_file(fd) # “magic symlink” to name of file with no name
+    c_path = _get_path(path, "path")
+    tmpfile_path = "/proc/self/fd/%d" % _get_fileno(fd) # “magic symlink” to name of file with no name
     _check_sts(libc.linkat(AT_FDCWD, tmpfile_path.encode(), AT_FDCWD, c_path, AT_SYMLINK_FOLLOW))
 #end save_tmpfile
 
