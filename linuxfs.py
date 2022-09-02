@@ -451,11 +451,19 @@ class TentativeFile :
     "\n" \
     "After finishing writing and closing the new file’s contents, call this class’s" \
     " save() method to actually make the new file appear in the filesystem under" \
-    " the specified name, replacing any existing file of that name."
+    " the specified name, replacing any existing file of that name.\n" \
+    "\n" \
+    "The saving technique requires the new file to initially appear in the" \
+    " filesystem under a temporary name, before assuming the specified name." \
+    " This temporary name is formed by adding a suffix to the specified name," \
+    " which can fail if there is already a file with that temporary name." \
+    " To deal with this, it is possible to specify a number of additional retries," \
+    " appending an additional incrementing numeric suffix each time, to find an" \
+    " unused name for temporary use."
 
-    __slots__ = ("fd", "dirfd", "pathname")
+    __slots__ = ("fd", "dirfd", "pathname", "tempsuffix", "tempretry")
 
-    def __init__(self, *, dirfd = None, pathname, readable = True, mode = 0o777) :
+    def __init__(self, *, dirfd = None, pathname, readable = True, mode = 0o777, tempsuffix = "[new]", tempretry = 0) :
         if dirfd == None :
             dirfd = AT_FDCWD
         #end if
@@ -469,6 +477,11 @@ class TentativeFile :
             flags = (os.O_WRONLY, os.O_RDWR)[readable] | os.O_TMPFILE,
             mode = mode
           )
+        self.tempsuffix = _get_path(tempsuffix, "temp suffix")
+        if not isinstance(tempretry, int) or tempretry < 0 :
+            raise ValueError("tempretry must be non-negative integer")
+        #end if
+        self.tempretry = tempretry
     #end __init__
 
     def open(self, mode) :
@@ -477,13 +490,27 @@ class TentativeFile :
             os.fdopen(os.dup(self.fd), mode, closefd = True)
     #end open
 
-    def save(self, tempsuffix = b"[new]") :
+    def save(self) :
         "makes the new file visible in the filesystem, replacing any existing" \
-        " file with the same name. Will fail if the temporary output file name" \
-        " is already in use!"
+        " file with the same name."
         assert self.fd != None, "file already closed"
-        temppathname = self.pathname + _get_path(tempsuffix, "temp suffix")
-        save_tmpfile(self.fd, temppathname)
+        retry = self.tempretry
+        retry_index = 0
+        tempsuffix = self.tempsuffix
+        while True :
+            temppathname = self.pathname + tempsuffix
+            try :
+                save_tmpfile(self.fd, temppathname)
+            except FileExistsError :
+                if retry_index == retry :
+                    raise
+                #end if
+            else :
+                break
+            #end try
+            retry_index += 1
+            tempsuffix = self.tempsuffix + b"[%d]" % retry_index
+        #end while
         try :
             rename_at(self.dirfd, temppathname, self.dirfd, self.pathname, RENAME_EXCHANGE)
         except FileNotFoundError :
