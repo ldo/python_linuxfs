@@ -438,3 +438,62 @@ def rename_at(olddirfd, oldpath, newdirfd, newpath, flags = 0) :
       )
     _check_sts(res)
 #end rename_at
+
+class TentativeFile :
+    "Convenience class for implementing a safe-overwrite-in-place mechanism." \
+    " Create one of these specifying the final pathname of the output file," \
+    " which might or might not already exist. Use the open() method to create" \
+    " a regular Python file object for writing to the new file. If you want to" \
+    " read from the existing file with that name, you may open it before or after" \
+    " creating this TentativeFile object; the existing file remains untouched" \
+    " and accessible under its current name unless and until this new file is" \
+    " explicitly saved.\n" \
+    "\n" \
+    "After finishing writing and closing the new file’s contents, call this class’s" \
+    " save() method to actually make the new file appear in the filesystem under" \
+    " the specified name, replacing any existing file of that name."
+
+    __slots__ = ("fd", "dirfd", "pathname")
+
+    def __init__(self, *, dirfd = None, pathname, readable = True, mode = 0o777) :
+        if dirfd == None :
+            dirfd = AT_FDCWD
+        #end if
+        self.dirfd = dirfd
+        self.pathname = _get_path(pathname, "pathname")
+        self.fd = open_at \
+          (
+            dirfd = dirfd,
+            pathname = os.path.split(os.path.abspath(pathname))[0],
+              # ensure it’s on same filesystem as file it’ll be replacing
+            flags = (os.O_WRONLY, os.O_RDWR)[readable] | os.O_TMPFILE,
+            mode = mode
+          )
+    #end __init__
+
+    def open(self, mode) :
+        "opens a new file object for writing new file contents."
+        return \
+            os.fdopen(os.dup(self.fd), mode, closefd = True)
+    #end open
+
+    def save(self, tempsuffix = b"[new]") :
+        "makes the new file visible in the filesystem, replacing any existing" \
+        " file with the same name. Will fail if the temporary output file name" \
+        " is already in use!"
+        assert self.fd != None, "file already closed"
+        temppathname = self.pathname + _get_path(tempsuffix, "temp suffix")
+        save_tmpfile(self.fd, temppathname)
+        try :
+            rename_at(self.dirfd, temppathname, self.dirfd, self.pathname, RENAME_EXCHANGE)
+        except FileNotFoundError :
+            # no existing file with that name
+            rename_at(self.dirfd, temppathname, self.dirfd, self.pathname, RENAME_NOREPLACE)
+        else :
+            os.unlink(temppathname) # this is now the old file
+        #end try
+        os.close(self.fd)
+        self.fd = None
+    #end save
+
+#end TentativeFile
