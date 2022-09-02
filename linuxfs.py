@@ -523,4 +523,14 @@ class TentativeFile :
         self.fd = None
     #end save
 
+    def unsave(self) :
+        "explicitly abandons the saving of the output file."
+        if self.fd != None :
+            os.close(self.fd)
+            self.fd = None
+        #end if
+    #end unsave
+
+    __del__ = unsave
+
 #end TentativeFile
