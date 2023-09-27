@@ -1,10 +1,4 @@
-This module provides a pure-Python wrapper around some Linux-specific
-filesystem calls that have not (yet) found their way into the standard
-Python library.
-
-Examples of how to use this module can be find in my `python_linuxfs_examples`
-repo, available on [GitLab](https://gitlab.com/ldo/python_linuxfs_examples)
-and [BitBucket](https://bitbucket.org/ldo17/python_linuxfs_examples).
-
-Lawrence D'Oliveiro <ldo@geek-central.gen.nz>
-2023 September 27
+This project is no longer being maintained on GitHub.
+Look for it at one of
+* gitlab: https://gitlab.com/ldo/python_linuxfs
+* bitbucket: https://bitbucket.org/ldo17/python_linuxfs
